@@ -1,4 +1,4 @@
-from bot import LOGGER, DROPBOX_ACCESS_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN
+from bot import LOGGER, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
 from ..filetocloud import CloudBot
 from ..helpers import download_media
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -11,20 +11,16 @@ from bot.helpers.dbox_authorization import refresh_access_token,exchange_code_fo
 from bot import state
 
 logger = LOGGER(__name__)
-print("DROPBOX_ACCESS_TOKEN", DROPBOX_ACCESS_TOKEN)
+
 print("DROPBOX_APP_KEY", DROPBOX_APP_KEY)
 print("DROPBOX_APP_SECRET", DROPBOX_APP_SECRET)
-print("DROPBOX_REFRESH_TOKEN", DROPBOX_REFRESH_TOKEN)
-
 link = ""
-if not DROPBOX_ACCESS_TOKEN:
+if not os.getenv('DROPBOX_ACCESS_TOKEN'):
     DROPBOX_ACCESS_TOKEN = "Your"
 
-if not DROPBOX_REFRESH_TOKEN:
-    DROPBOX_ACCESS_TOKEN = "Your"
+if not os.getenv('DROPBOX_REFRESH_TOKEN'):
     DROPBOX_REFRESH_TOKEN = "Your"
 
-dbx = dropbox.Dropbox(DROPBOX_ACCESS_TOKEN)
 
 def set_waiting_for_code(value: bool):
     # Somewhere in servers.py, when you need to set waiting_for_code to True
@@ -52,6 +48,10 @@ def upload_dbox(dbx, path, overwrite=False):
     print("Dropbox Path: ", dropbox_path)
     print("Relative Path: ", relative_path)
     print("Path: ", path)
+    print("AUTH TOKEN: ", DROPBOX_ACCESS_TOKEN)
+    print("ENV_AUTH_TOKEN: ", os.getenv('DROPBOX_ACCESS_TOKEN'))
+    print("REFRESH TOKEN", DROPBOX_REFRESH_TOKEN)
+    print("ENV_REFRESH TOKEN", os.getenv('DROPBOX_REFRESH_TOKEN'))
     
     # Checking file existence and mode (overwrite or add)
     mode = dropbox.files.WriteMode.overwrite if overwrite else dropbox.files.WriteMode.add
@@ -98,7 +98,9 @@ def upload_dbox(dbx, path, overwrite=False):
 
 
 async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
-    global link, dbx
+    global link
+    dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or DROPBOX_ACCESS_TOKEN)
+
     if message.message.reply_to_message.video:
         file_name = message.message.reply_to_message.video.file_name
         file_size = size(message.message.reply_to_message.video.file_size)
@@ -149,6 +151,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             print("Refreshing token...")
             print("Error: ", e)
             print("Old Access Token: ", DROPBOX_ACCESS_TOKEN, "\nOld Refresh Token: ", DROPBOX_REFRESH_TOKEN, "\nApp Key: ", DROPBOX_APP_KEY, "\nApp Secret: ", DROPBOX_APP_SECRET)
+            DROPBOX_REFRESH_TOKEN = os.getenv('DROPBOX_REFRESH_TOKEN')
             new_access_token, _ = refresh_access_token(DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET)
             dbx = dropbox.Dropbox(new_access_token)
             # Retry the upload or other operation
