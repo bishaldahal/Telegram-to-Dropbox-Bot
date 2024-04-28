@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start a background Python HTTP server that always returns HTTP 200 OK
-python3 -m http.server 8000 --bind 127.0.0.1 &
+python3 -m http.server 8000 --bind 0.0.0.0 &
 HTTP_SERVER_PID=$!
 
 # Function to stop the HTTP server when the script exits
