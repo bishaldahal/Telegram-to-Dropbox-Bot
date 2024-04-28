@@ -12,14 +12,9 @@ from bot import state
 
 logger = LOGGER(__name__)
 
-print("DROPBOX_APP_KEY", DROPBOX_APP_KEY)
-print("DROPBOX_APP_SECRET", DROPBOX_APP_SECRET)
 link = ""
-if not os.getenv('DROPBOX_ACCESS_TOKEN'):
-    DROPBOX_ACCESS_TOKEN = "Your"
-
-if not os.getenv('DROPBOX_REFRESH_TOKEN'):
-    DROPBOX_REFRESH_TOKEN = "Your"
+DROPBOX_ACCESS_TOKEN = os.getenv('DROPBOX_ACCESS_TOKEN', "Your_Default_Access_Token")
+DROPBOX_REFRESH_TOKEN = os.getenv('DROPBOX_REFRESH_TOKEN', "Your_Default_Refresh_Token")
 
 
 def set_waiting_for_code(value: bool):
@@ -48,10 +43,6 @@ def upload_dbox(dbx, path, overwrite=False):
     print("Dropbox Path: ", dropbox_path)
     print("Relative Path: ", relative_path)
     print("Path: ", path)
-    print("AUTH TOKEN: ", DROPBOX_ACCESS_TOKEN)
-    print("ENV_AUTH_TOKEN: ", os.getenv('DROPBOX_ACCESS_TOKEN'))
-    print("REFRESH TOKEN", DROPBOX_REFRESH_TOKEN)
-    print("ENV_REFRESH TOKEN", os.getenv('DROPBOX_REFRESH_TOKEN'))
     
     # Checking file existence and mode (overwrite or add)
     mode = dropbox.files.WriteMode.overwrite if overwrite else dropbox.files.WriteMode.add
