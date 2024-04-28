@@ -81,7 +81,7 @@ def upload_dbox(dbx, path, overwrite=False):
         shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path, link_settings)
         print("Shared link:", shared_link_metadata.url)
     except dropbox.exceptions.BadInputError as e:
-        logger.error(f"BBBBBAAAADDDD, {e}")
+        logger.error(f"Bad Input Error: {e}")
         raise e
     except dropbox.exceptions.ApiError as e:
         logger.error(f"API Error: {e}")
@@ -93,7 +93,6 @@ def upload_dbox(dbx, path, overwrite=False):
         raise e
     
     print('Uploaded as', res.name.encode('utf8'))
-    print ("DBOX RESPONSE: \n",res, "\n\n")
     return shared_link_metadata.url
 
 
@@ -173,8 +172,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
         try:
             print("Refreshing token...")
             auth_url = get_auth_url()
-            flag=set_waiting_for_code(True)
-            print("Set waiting for code to True", flag)
+            set_waiting_for_code(True)
             await client.send_message(
                 chat_id=message.message.chat.id,
                 text="Session expired. Please reauthorize the bot. After authorizing, please paste the authorization code you receive here.",
@@ -182,7 +180,6 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
                     [InlineKeyboardButton("Authorize", url=auth_url)]
                 ])
             )
-            print("Sent message")
         except Exception as auth_error:
             logger.error(f"{auth_error}")
             await client.send_message(
