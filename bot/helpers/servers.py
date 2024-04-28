@@ -179,7 +179,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             # Check if the file size exceeds the threshold
             if file_size_bytes > FILE_SIZE_THRESHOLD:
                 print("Using chunked upload for large file.")
-                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}")
+                response = upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}")
             else:
                 print("Using regular upload.")
                 response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
