@@ -126,7 +126,8 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
 
         await client.send_message(
             chat_id=message.message.chat.id,
-            text=(f"File Name: `{file_name}`"
+            text=(f"✅ **Upload Successful**\n\n"
+                  f"File Name: `{file_name}`"
                   f"\nFile Size: `{file_size}`"
                   f'\nURL: `{link}`'),
             reply_to_message_id=message.message.reply_to_message.id
