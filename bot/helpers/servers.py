@@ -7,15 +7,13 @@ import dropbox
 import os
 import datetime
 import time
-from bot.helpers.dbox_authorization import refresh_access_token,exchange_code_for_tokens,get_auth_url
+from bot.helpers.dbox_authorization import refresh_access_token,get_auth_url
 from bot import state
+from bot.env import update_env_file
 
 logger = LOGGER(__name__)
 
 link = ""
-DROPBOX_ACCESS_TOKEN = os.getenv('DROPBOX_ACCESS_TOKEN', "Your_Default_Access_Token")
-DROPBOX_REFRESH_TOKEN = os.getenv('DROPBOX_REFRESH_TOKEN', "Your_Default_Refresh_Token")
-
 
 def set_waiting_for_code(value: bool):
     # Somewhere in servers.py, when you need to set waiting_for_code to True
@@ -89,7 +87,7 @@ def upload_dbox(dbx, path, overwrite=False):
 
 async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
     global link
-    dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or DROPBOX_ACCESS_TOKEN)
+    dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or "Your_Default_Access_Token")
 
     if message.message.reply_to_message.video:
         file_name = message.message.reply_to_message.video.file_name
@@ -141,10 +139,11 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
         try:
             print("Refreshing token...")
             print("Error: ", e)
-            print("Old Access Token: ", DROPBOX_ACCESS_TOKEN, "\nOld Refresh Token: ", DROPBOX_REFRESH_TOKEN, "\nApp Key: ", DROPBOX_APP_KEY, "\nApp Secret: ", DROPBOX_APP_SECRET)
             DROPBOX_REFRESH_TOKEN = os.getenv('DROPBOX_REFRESH_TOKEN')
             new_access_token, _ = refresh_access_token(DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET)
             dbx = dropbox.Dropbox(new_access_token)
+            update_env_file('DROPBOX_ACCESS_TOKEN', new_access_token)
+
             # Retry the upload or other operation
         except Exception as refresh_error:
             # Handle refresh token expiration or failure
@@ -153,7 +152,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             set_waiting_for_code(True)
             await client.send_message(
                 chat_id=message.message.chat.id,
-                text="Session expired. Please reauthorize the bot.\n After authorizing, please paste the authorization code you receive here.",
+                text="Refresh Token expired too.\n After authorizing, please paste the authorization code you receive here.",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("Authorize", url=auth_url)]
                 ])
