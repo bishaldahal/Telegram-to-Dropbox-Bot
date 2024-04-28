@@ -40,7 +40,6 @@ async def user_document(client, bot):
     logger.info(f"{bot.chat.id} - {bot.document.file_name}")
     file_name = bot.document.file_name
     file_size = size(bot.document.file_size)
-    print("BOT",bot)
     await client.send_message(
         chat_id=bot.chat.id,
         text=(
