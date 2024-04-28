@@ -18,4 +18,4 @@ dotenv_path = '.env'
 
 def update_env_file(key, value):
     set_key(dotenv_path, key, value)
-    load_dotenv()
+    load_dotenv(override=True)
