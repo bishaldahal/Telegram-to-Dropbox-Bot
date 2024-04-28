@@ -1,8 +1,13 @@
 #!/bin/bash
 
-# Start a background Python HTTP server that always returns HTTP 200 OK
+# Define the path to the dummy directory
+DUMMY_DIR="$(pwd)/dummy_dir"
+
+# Start a background Python HTTP server that serves the dummy directory and always returns HTTP 200 OK
+cd "$DUMMY_DIR"
 python3 -m http.server 8000 --bind 0.0.0.0 &
 HTTP_SERVER_PID=$!
+cd -  # Return to the original directory
 
 # Function to stop the HTTP server when the script exits
 function cleanup {
