@@ -19,3 +19,15 @@ dotenv_path = '.env'
 def update_env_file(key, value):
     set_key(dotenv_path, key, value)
     load_dotenv(override=True)
+
+def clear_auth():
+    set_key(dotenv_path, 'DROPBOX_ACCESS_TOKEN', '')
+    set_key(dotenv_path, 'DROPBOX_REFRESH_TOKEN', '')
+    # Manually update the environment variables in the current process
+    os.environ['DROPBOX_ACCESS_TOKEN'] = ''
+    os.environ['DROPBOX_REFRESH_TOKEN'] = ''
+    print("Authentication tokens have been cleared.")
+    print("Please restart the bot.")
+    print("Exiting...")
+    load_dotenv(override=True)
+    return True

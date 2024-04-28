@@ -23,7 +23,8 @@ state = GlobalState()
 # Messages
 START = "\n\n**~~This bot uploads telegram files to Dropbox. \n\n**"
 ERROR = "Something went wrong\n{error}"
-HELP = "\n\nUsage: **Send any file or bot. Then select the third-party Cloud you want to upload to.**"
+HELP = "\n\nUsage: **Send any file. Then select the third-party Cloud you want to upload to.**"
+CLEAR_AUTH = "Authentication tokens have been cleared."
 
 
 # LOGGER
