@@ -4,6 +4,9 @@ from ..helpers import download_media
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from hurry.filesize import size
 import dropbox 
+from dropbox.exceptions import ApiError
+from dropbox.files import CommitInfo, UploadSessionCursor,WriteMode
+from dropbox.sharing import SharedLinkSettings, RequestedVisibility, LinkAudience
 import os
 import datetime
 import time
@@ -85,19 +88,73 @@ def upload_dbox(dbx, path, overwrite=False):
     return shared_link_metadata.url
 
 
+def upload_large_file(dbx, file_path, dropbox_path):
+    with open(file_path, "rb") as f:
+        file_size = os.path.getsize(file_path)
+        chunk_size = 4 * 1024 * 1024  # 4 MB
+
+        try:
+            upload_session_start_result = dbx.files_upload_session_start(f.read(chunk_size))
+            cursor = UploadSessionCursor(session_id=upload_session_start_result.session_id, offset=f.tell())
+            commit = CommitInfo(path=dropbox_path)
+
+            while f.tell() < file_size:
+                if (file_size - f.tell()) <= chunk_size:
+                    print("Finishing upload...")
+                    dbx.files_upload_session_finish(f.read(chunk_size), cursor, commit)
+                else:
+                    print("Uploading chunk...")
+                    dbx.files_upload_session_append_v2(f.read(chunk_size), cursor)
+                    cursor.offset = f.tell()
+
+            # Adjust the shared link settings for view-only access
+            link_settings = SharedLinkSettings(
+                requested_visibility=RequestedVisibility.public,
+                audience=LinkAudience.public
+            )
+
+            # Create a shared link with the specified settings
+            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path, link_settings)
+            print("Shared link:", shared_link_metadata.url)
+            return shared_link_metadata.url
+
+        except ApiError as e:
+            print(f"API error: {e}")
+            if 'shared_link_already_exists' in str(e):
+                # Attempt to get the existing shared link if it already exists
+                shared_links = dbx.sharing_list_shared_links(dropbox_path).links
+                if shared_links:
+                    return shared_links[0].url
+            raise
+        except Exception as e:
+            print(f"Error: {e}")
+            raise
+
+FILE_SIZE_THRESHOLD = 150 * 1024 * 1024  # 150 MB
+
 async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
     global link
     dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or "Your_Default_Access_Token")
 
+    # Determine the file type and size
     if message.message.reply_to_message.video:
         file_name = message.message.reply_to_message.video.file_name
-        file_size = size(message.message.reply_to_message.video.file_size)
+        file_size_bytes = message.message.reply_to_message.video.file_size
     elif message.message.reply_to_message.document:
         file_name = message.message.reply_to_message.document.file_name
-        file_size = size(message.message.reply_to_message.document.file_size)
+        file_size_bytes = message.message.reply_to_message.document.file_size
     elif message.message.reply_to_message.audio:
         file_name = message.message.reply_to_message.audio.file_name
-        file_size = size(message.message.reply_to_message.audio.file_size)
+        file_size_bytes = message.message.reply_to_message.audio.file_size
+    else:
+        await client.send_message(
+            chat_id=message.message.chat.id,
+            text="Unsupported file type.",
+            reply_to_message_id=message.message.reply_to_message.id
+        )
+        return
+
+    file_size = size(file_size_bytes)  # Convert bytes to a readable format
 
     try:
         file_path = await download_media(client, message)
@@ -118,8 +175,14 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
         )
 
         if callback_data.startswith('dropbox'):
-            print("Filepath: ",file_path)
-            response = upload_dbox(dbx=dbx, path=file_path,overwrite=False)
+            print("Filepath: ", file_path)
+            # Check if the file size exceeds the threshold
+            if file_size_bytes > FILE_SIZE_THRESHOLD:
+                print("Using chunked upload for large file.")
+                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}")
+            else:
+                print("Using regular upload.")
+                response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
             link = response
 
         await client.send_message(
