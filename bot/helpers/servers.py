@@ -90,6 +90,8 @@ def upload_dbox(dbx, path, overwrite=False):
 
 
 async def upload_large_file(dbx, file_path, dropbox_path, message):
+    upload_id = f"{message.message.chat.id}{message.message.id}"
+
     with open(file_path, "rb") as f:
         file_size = os.path.getsize(file_path)
         chunk_size = 4 * 1024 * 1024  # 4 MB
@@ -102,6 +104,10 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
             await progress(uploaded_bytes, file_size, message.message)
 
             while f.tell() < file_size:
+                 # Check if the upload has been cancelled
+                if state.upload_controller.get(upload_id, False):
+                    print("Upload cancelled.")
+                    return "Cancelled"
                 if (file_size - f.tell()) <= chunk_size:
                     print("Finishing upload...")
                     dbx.files_upload_session_finish(f.read(chunk_size), cursor, commit)
@@ -138,6 +144,10 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
         except Exception as e:
             print(f"Error: {e}")
             raise
+        finally:
+            # Clean up the cancellation flag
+            if upload_id in state.upload_controller:
+                del state.upload_controller[upload_id]
 
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024  # 150 MB
 
@@ -251,7 +261,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             )
         return
     except Exception as e:
-        logger.error(f'Normal error:{e}')
+        logger.error(f'Normalxss error:{e} Message: {message}')
         await client.edit_message_text(
             chat_id=message.from_user.id,
             message_id=message.message.id,

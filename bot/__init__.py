@@ -15,6 +15,7 @@ DROPBOX_APP_SECRET = get_env('DROPBOX_APP_SECRET')
 class GlobalState:
     def __init__(self):
         self.waiting_for_code = False
+        self.upload_controller = {}
 
 # Create a global instance of the state
 state = GlobalState()
