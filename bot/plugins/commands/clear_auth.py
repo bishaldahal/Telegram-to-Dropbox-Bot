@@ -40,7 +40,8 @@ async def confirm_clear_auth(client, callback_query):
 async def cancel_clear_auth(client, callback_query):
     # Inform the user that the operation was cancelled
     await client.answer_callback_query(callback_query.id, "Clear authentication cancelled.")
-
+    print("Clear authentication cancelled.")
+    print(callback_query)
     # Delete the original command message and the confirmation message
     await client.delete_messages(
         chat_id=callback_query.message.chat.id,
