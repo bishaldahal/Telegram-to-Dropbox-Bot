@@ -16,6 +16,7 @@ class GlobalState:
     def __init__(self):
         self.waiting_for_code = False
         self.upload_controller = {}
+        self.download_controller = {}
 
 # Create a global instance of the state
 state = GlobalState()

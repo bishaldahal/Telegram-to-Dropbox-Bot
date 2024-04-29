@@ -157,7 +157,10 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
     file_size = size(file_size_bytes)  # Convert bytes to a readable format
 
     try:
-        file_path = await download_media(client, message)
+        file_path, download_successful = await download_media(client, message)
+        if not download_successful:
+            logger.info("Download was cancelled. Skipping upload.")
+            return
     except Exception as e:
         logger.error(f"{e}")
         await client.edit_message_text(
@@ -184,6 +187,8 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
                 print("Using regular upload.")
                 response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
             link = response
+            if response == "Cancelled":
+                return
 
         await client.send_message(
             chat_id=message.message.chat.id,
@@ -242,7 +247,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             )
         return
     except Exception as e:
-        logger.error(f'Normalxss error:{e} Message: {message}')
+        logger.error(f'Normal error:{e} ')
         await client.edit_message_text(
             chat_id=message.from_user.id,
             message_id=message.message.id,

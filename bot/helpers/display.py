@@ -2,12 +2,16 @@ from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import time
 from datetime import timedelta
 from ..helpers.timedata import time_data
-from bot import LOGGER
+from bot import LOGGER, state
 
 logger = LOGGER(__name__)
 
 async def progress(current, total, message: Message):
+    download_id = f"{message.chat.id}{message.reply_to_message_id}"
     global start_time
+    if state.download_controller.get(download_id):
+        raise Exception("Cancellation requested")
+    
     if 'start_time' not in globals():
         start_time = time.time()  # Reset start time for each new download
 
@@ -30,10 +34,11 @@ async def progress(current, total, message: Message):
                        f"Elapsed: {elapsed}"
 
     try:
+        print ("Cancel!", f"cncl+{message.chat.id}{message.reply_to_message_id}")
         await message.edit(
                 text=progress_details,
                 reply_markup=InlineKeyboardMarkup(
-                [[InlineKeyboardButton("Cancel!", f"cncl+{message.chat.id}-{message.reply_to_message_id}")]]
+                [[InlineKeyboardButton("Cancel!", f"cncl+{message.chat.id}{message.reply_to_message_id}")]]
                 ))
     except Exception as e:
         logger.error(f"Error updating progress: {e}")
