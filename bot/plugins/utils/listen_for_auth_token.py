@@ -6,9 +6,9 @@ from bot.filetocloud import CloudBot
 
 @CloudBot.on_message(filters.text & filters.private)
 async def authorization_code_handler(client, message):
-    print("Authorization Code Handler")
     # Assuming 'waiting_for_code' is a flag that indicates you're expecting an authorization code
     if state.waiting_for_code:
+        print("Authorization Code Handler")
         code = message.text
         print("Code: ", code)
         access_token, refresh_token = exchange_code_for_tokens(code)
