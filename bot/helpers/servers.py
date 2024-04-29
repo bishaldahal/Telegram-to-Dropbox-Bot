@@ -132,6 +132,15 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
 
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024  # 150 MB
 
+async def attempt_upload(dbx, file_path, dropbox_path, message, file_size_bytes, file_name):
+    if file_size_bytes > FILE_SIZE_THRESHOLD:
+        print("Using chunked upload for large file.")
+        response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message)
+    else:
+        print("Using regular upload.")
+        response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
+    return response
+
 async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
     global link
     dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or "Your_Default_Access_Token")
@@ -180,14 +189,9 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
         if callback_data.startswith('dropbox'):
             print("Filepath: ", file_path)
             # Check if the file size exceeds the threshold
-            if file_size_bytes > FILE_SIZE_THRESHOLD:
-                print("Using chunked upload for large file.")
-                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message)
-            else:
-                print("Using regular upload.")
-                response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
-            link = response
-            if response == "Cancelled":
+            # Initial upload attempt
+            link = await attempt_upload(dbx, file_path, f"/{file_name}", message, file_size_bytes, file_name)
+            if link == "Cancelled":
                 return
 
         await client.send_message(
@@ -211,6 +215,10 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             new_access_token, _ = refresh_access_token(DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET)
             dbx = dropbox.Dropbox(new_access_token)
             update_env_file('DROPBOX_ACCESS_TOKEN', new_access_token)
+            # Initial upload attempt
+            link = await attempt_upload(dbx, file_path, f"/{file_name}", message, file_size_bytes, file_name)
+            if link == "Cancelled":
+                return
 
             # Retry the upload or other operation
         except Exception as refresh_error:
