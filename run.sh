@@ -17,6 +17,7 @@ stop_http_server() {
         echo "Stopping HTTP server..."
         kill $HTTP_SERVER_PID
         wait $HTTP_SERVER_PID 2>/dev/null
+        unset HTTP_SERVER_PID  # Clear the PID after stopping the server
     fi
 }
 
