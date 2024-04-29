@@ -20,8 +20,13 @@ class CloudBot(Client):
             bot_token=BOT_TOKEN,
             plugins={
                 "root": "bot/plugins"
-            }
+            },
+            workers=6,
         )
+        self.counter = 0
+        self.DOWNLOAD_WORKERS = 4
+        self.download_controller = {}
+        self.upload_controller = {}
 
     async def start(self):
         await super().start()
