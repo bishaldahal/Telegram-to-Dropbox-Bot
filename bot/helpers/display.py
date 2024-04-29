@@ -43,7 +43,6 @@ async def progress(current, total, message: Message):
                        f"Elapsed: {elapsed}"
 
     try:
-        print ("Cancel!", f"cncl+{message.chat.id}{message.reply_to_message_id}")
         await message.edit(
                 text=progress_details,
                 reply_markup=InlineKeyboardMarkup(
