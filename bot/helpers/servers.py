@@ -5,8 +5,7 @@ from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBu
 from hurry.filesize import size
 import dropbox 
 from dropbox.exceptions import ApiError
-from dropbox.files import CommitInfo, UploadSessionCursor,WriteMode
-from dropbox.sharing import SharedLinkSettings, RequestedVisibility, LinkAudience
+from dropbox.files import CommitInfo, UploadSessionCursor
 import os
 import datetime
 import time
@@ -14,6 +13,7 @@ from bot.helpers.dbox_authorization import refresh_access_token,get_auth_url
 from bot import state
 from bot.env import update_env_file
 from ..helpers.display import progress
+from ..helpers.create_shared_link import create_shared_link
 
 logger = LOGGER(__name__)
 
@@ -64,29 +64,17 @@ def upload_dbox(dbx, path, overwrite=False):
             mute=True)
         print("Uploaded as", res.name.encode('utf8'))
 
-        # Adjust the shared link settings for view-only access
-        link_settings = dropbox.sharing.SharedLinkSettings(
-            requested_visibility=dropbox.sharing.RequestedVisibility.public,
-            audience=dropbox.sharing.LinkAudience.public
-        )
-
-        # Create a shared link with the specified settings
-        shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path, link_settings)
-        print("Shared link:", shared_link_metadata.url)
     except dropbox.exceptions.BadInputError as e:
         logger.error(f"Bad Input Error: {e}")
         raise e
     except dropbox.exceptions.ApiError as e:
         logger.error(f"API Error: {e}")
-        if e.error.is_shared_link_already_exists():
-            # Get the existing shared link
-            shared_link_metadata = dbx.sharing_list_shared_links(dropbox_path).links[0]
     except Exception as e:
         logger.error(f"Error: {e}")
         raise e
-    
-    print('Uploaded as', res.name.encode('utf8'))
-    return shared_link_metadata.url
+    # Create or retrieve a shared link
+    shared_link_url = create_shared_link(dbx, dropbox_path)
+    return shared_link_url
 
 
 async def upload_large_file(dbx, file_path, dropbox_path, message):
@@ -122,16 +110,9 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
                     await progress(uploaded_bytes, file_size, message.message)
 
 
-            # Adjust the shared link settings for view-only access
-            link_settings = SharedLinkSettings(
-                requested_visibility=RequestedVisibility.public,
-                audience=LinkAudience.public
-            )
-
-            # Create a shared link with the specified settings
-            shared_link_metadata = dbx.sharing_create_shared_link_with_settings(dropbox_path, link_settings)
-            print("Shared link:", shared_link_metadata.url)
-            return shared_link_metadata.url
+            # Create or retrieve a shared link
+            shared_link_url = create_shared_link(dbx, dropbox_path)
+            return shared_link_url
 
         except ApiError as e:
             print(f"API error: {e}")
