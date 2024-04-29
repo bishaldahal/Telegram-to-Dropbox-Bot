@@ -1,8 +1,11 @@
 from bot.filetocloud import CloudBot, filters
 from bot import CLEAR_AUTH
 from bot.env import clear_auth
+import os
 
-@CloudBot.on_message(filters.command("clear_auth"))
+AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
+
+@CloudBot.on_message(filters.command("clear_auth") & filters.private & filters.user(AUTHORIZED_USERS))
 async def clear_auth_command(client, message):
     print(message)
     if clear_auth():

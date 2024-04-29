@@ -4,9 +4,12 @@ from pyrogram import Client, filters
 from datetime import datetime
 from pyrogram import enums
 from bot.filetocloud import CloudBot
-from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+import os
 
-@CloudBot.on_message(filters.command("system_info"))
+
+AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
+
+@CloudBot.on_message(filters.command("system_info") & filters.private & filters.user(AUTHORIZED_USERS))
 async def system_info(client, message):
     # System-wide information
     uname = platform.uname()
@@ -56,4 +59,3 @@ async def system_info(client, message):
 
     # Sending the system information with HTML parse mode support
     await message.reply_text(system_info, parse_mode=enums.ParseMode.HTML)
-    

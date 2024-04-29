@@ -5,13 +5,8 @@ import os
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-@CloudBot.on_message(filters.command("exec"))
+@CloudBot.on_message(filters.command("exec") & filters.private & filters.user(AUTHORIZED_USERS))
 async def execute_command(client, message):
-    # Check if the user is authorized
-    if message.from_user.id not in AUTHORIZED_USERS:
-        print(f"Unauthorized user {message.from_user.id} tried to execute command.")
-        await message.reply_text("You are not authorized to execute commands.")
-        return
 
     # Extracting the command from the message
     command = message.text.split(" ", 1)

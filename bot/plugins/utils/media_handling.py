@@ -3,19 +3,13 @@ from ...filetocloud import CloudBot, filters
 from bot import LOGGER
 from hurry.filesize import size
 from ...helpers import server_select
+import os
 
-BOT_USE = False
-AUTH_USER: list
+AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-if BOT_USE:
-    AUTH_USER.append(0)
-    VIDEO = filters.video & filters.user(AUTH_USER)
-    DOCUMENT = filters.document & filters.user(AUTH_USER)
-    AUDIO = filters.audio & filters.user(AUTH_USER)
-else:
-    VIDEO = filters.video
-    DOCUMENT = filters.document
-    AUDIO = filters.audio
+VIDEO = filters.video & filters.user(AUTHORIZED_USERS)
+DOCUMENT = filters.document & filters.user(AUTHORIZED_USERS)
+AUDIO = filters.audio & filters.user(AUTHORIZED_USERS)
 
 logger = LOGGER(__name__)
 

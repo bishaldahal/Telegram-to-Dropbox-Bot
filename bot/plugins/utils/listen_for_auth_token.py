@@ -2,9 +2,11 @@ from pyrogram import filters
 from bot.helpers.dbox_authorization import exchange_code_for_tokens
 from bot import state
 from bot.filetocloud import CloudBot
-# Handler for messages that might contain the authorization code
+import os
 
-@CloudBot.on_message(filters.text & filters.private)
+AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
+
+@CloudBot.on_message(filters.text & filters.private & filters.user(AUTHORIZED_USERS))
 async def authorization_code_handler(client, message):
     # Assuming 'waiting_for_code' is a flag that indicates you're expecting an authorization code
     if state.waiting_for_code:
