@@ -3,23 +3,38 @@
 # Define the path to the dummy directory
 DUMMY_DIR="$(pwd)/dummy_dir"
 
-# Start a background Python HTTP server that serves the dummy directory and always returns HTTP 200 OK
-cd "$DUMMY_DIR"
-python3 -m http.server 8000 --bind 0.0.0.0 &
-HTTP_SERVER_PID=$!
-cd -  # Return to the original directory
+# Function to start the HTTP server
+start_http_server() {
+    cd "$DUMMY_DIR"
+    python3 -m http.server 8000 --bind 0.0.0.0 &
+    HTTP_SERVER_PID=$!
+    cd -  # Return to the original directory
+}
 
-# Function to stop the HTTP server when the script exits
-function cleanup {
-    echo "Stopping HTTP server..."
-    kill $HTTP_SERVER_PID
+# Function to stop the HTTP server
+stop_http_server() {
+    if [ ! -z "$HTTP_SERVER_PID" ]; then
+        echo "Stopping HTTP server..."
+        kill $HTTP_SERVER_PID
+        wait $HTTP_SERVER_PID 2>/dev/null
+    fi
+}
+
+# Function to cleanup resources on script exit
+cleanup() {
+    stop_http_server
 }
 
 # Register the cleanup function to be called on the EXIT signal
 trap cleanup EXIT
 
+# Start the HTTP server
+start_http_server
+
 # Run the bot in a loop
-until python3 -m bot; do
+until python3 -B -m bot; do
     echo "Bot crashed with exit code $?. Respawning.." >&2
     sleep 1
+    stop_http_server  # Ensure the current HTTP server is stopped
+    start_http_server  # Restart the HTTP server
 done
