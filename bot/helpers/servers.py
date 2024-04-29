@@ -13,6 +13,7 @@ import time
 from bot.helpers.dbox_authorization import refresh_access_token,get_auth_url
 from bot import state
 from bot.env import update_env_file
+from ..helpers.display import progress
 
 logger = LOGGER(__name__)
 
@@ -88,24 +89,32 @@ def upload_dbox(dbx, path, overwrite=False):
     return shared_link_metadata.url
 
 
-def upload_large_file(dbx, file_path, dropbox_path):
+async def upload_large_file(dbx, file_path, dropbox_path, message):
     with open(file_path, "rb") as f:
         file_size = os.path.getsize(file_path)
         chunk_size = 4 * 1024 * 1024  # 4 MB
+        uploaded_bytes = 0
 
         try:
             upload_session_start_result = dbx.files_upload_session_start(f.read(chunk_size))
             cursor = UploadSessionCursor(session_id=upload_session_start_result.session_id, offset=f.tell())
             commit = CommitInfo(path=dropbox_path)
+            await progress(uploaded_bytes, file_size, message.message)
 
             while f.tell() < file_size:
                 if (file_size - f.tell()) <= chunk_size:
                     print("Finishing upload...")
                     dbx.files_upload_session_finish(f.read(chunk_size), cursor, commit)
+                    uploaded_bytes += chunk_size
+                    await progress(uploaded_bytes, file_size, message.message)
+
                 else:
                     print("Uploading chunk...")
                     dbx.files_upload_session_append_v2(f.read(chunk_size), cursor)
                     cursor.offset = f.tell()
+                    uploaded_bytes += chunk_size
+                    await progress(uploaded_bytes, file_size, message.message)
+
 
             # Adjust the shared link settings for view-only access
             link_settings = SharedLinkSettings(
@@ -130,7 +139,7 @@ def upload_large_file(dbx, file_path, dropbox_path):
             print(f"Error: {e}")
             raise
 
-FILE_SIZE_THRESHOLD = 150 * 1024 * 1024  # 150 MB
+FILE_SIZE_THRESHOLD = 1 * 1024 * 1024  # 150 MB
 
 async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
     global link
@@ -169,7 +178,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
     try:
         await client.edit_message_text(
             chat_id=message.message.chat.id,
-            text="started uploading...",
+            text="Started uploading...",
             message_id=message.message.id
             # reply_markup=completedKeyboard(dl)
         )
@@ -179,7 +188,7 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
             # Check if the file size exceeds the threshold
             if file_size_bytes > FILE_SIZE_THRESHOLD:
                 print("Using chunked upload for large file.")
-                response = upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}")
+                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message)
             else:
                 print("Using regular upload.")
                 response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
