@@ -25,8 +25,6 @@ class CloudBot(Client):
         )
         self.counter = 0
         self.DOWNLOAD_WORKERS = 4
-        self.download_controller = {}
-        self.upload_controller = {}
 
     async def start(self):
         await super().start()
