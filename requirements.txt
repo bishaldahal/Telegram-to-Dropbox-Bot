@@ -3,3 +3,4 @@ TgCrypto
 hurry.filesize
 python-dotenv
 dropbox
+psutil

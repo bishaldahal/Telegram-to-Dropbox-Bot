@@ -2,6 +2,7 @@
 import logging
 from .env import get_env
 from logging.handlers import RotatingFileHandler
+import time
 
 API_ID = get_env('API_ID')
 API_HASH = get_env('API_HASH')
@@ -17,6 +18,7 @@ class GlobalState:
         self.waiting_for_code = False
         self.upload_controller = {}
         self.download_controller = {}
+        self.bot_start_time = time.time()
 
 # Create a global instance of the state
 state = GlobalState()
