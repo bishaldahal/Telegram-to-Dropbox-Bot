@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
 from ...filetocloud import CloudBot, filters
 from bot import LOGGER
-from hurry.filesize import size
-from ...helpers import server_select
+from ...helpers import upload_handler
 import os
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
@@ -17,45 +15,18 @@ logger = LOGGER(__name__)
 @CloudBot.on_message(VIDEO)
 async def user_video(client, bot):
     logger.info(f"{bot.chat.id} - {bot.video.file_name}")
-    file_name = bot.video.file_name
-    await client.send_message(
-        chat_id=bot.chat.id,
-        text=(
-            f"File Name: `{file_name}`"
-            f"\nFile Size: `{size(bot.video.file_size)}`"
-        ),
-        reply_markup=server_select(bot.video.file_size),
-        reply_to_message_id=bot.id
-    )
+    await upload_handler(client, bot)
 
 
 @CloudBot.on_message(DOCUMENT)
 async def user_document(client, bot):
     logger.info(f"{bot.chat.id} - {bot.document.file_name}")
-    file_name = bot.document.file_name
-    file_size = size(bot.document.file_size)
-    await client.send_message(
-        chat_id=bot.chat.id,
-        text=(
-            f"File Name: `{file_name}`"
-            f"\nFile Size: `{file_size}`"
-        ),
-        reply_markup=server_select(bot.document.file_size),
-        reply_to_message_id=bot.id
-    )
+    await upload_handler(client, bot)
+
 
 
 @CloudBot.on_message(AUDIO)
 async def user_audio(client, bot):
     logger.info(f"{bot.chat.id} - {bot.audio.file_name}")
-    file_name = bot.audio.file_name
-    file_size = size(bot.audio.file_size)
-    await client.send_message(
-        chat_id=bot.chat.id,
-        text=(
-            f"File Name: <code>`{file_name}`</code>"
-            f"\nFile Size: <code>{file_size}</code>"
-        ),
-        reply_markup=server_select(bot.audio.file_size),
-        reply_to_message_id=bot.id
-    )
+    await upload_handler(client, bot)
+
