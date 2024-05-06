@@ -37,7 +37,6 @@ async def progress(current, total, message: Message = None, user_message: Messag
     eta = timedelta(seconds=int((total - current) / speed)) if speed > 0 else "Unknown"
     elapsed = timedelta(seconds=int(time_diff))
 
-    logger.info("Progress : ", progress_str, percent, human_readable_size(current), human_readable_size(total), human_readable_size(speed), eta, elapsed,"Time_diff: ", time_diff,speed)
 
     progress_details = (
         f"{operation_title}...\n"
