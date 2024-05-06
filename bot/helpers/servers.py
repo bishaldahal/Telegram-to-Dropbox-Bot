@@ -1,29 +1,22 @@
-from bot import LOGGER, DROPBOX_APP_KEY, DROPBOX_APP_SECRET
+from bot import LOGGER
 from ..filetocloud import CloudBot
 from ..helpers import download_media
-from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from pyrogram.types import Message
 from hurry.filesize import size
 import dropbox 
-from dropbox.exceptions import ApiError
+from dropbox.exceptions import ApiError, AuthError, BadInputError
 from dropbox.files import CommitInfo, UploadSessionCursor
 import os
 import datetime
 import time
-from bot.helpers.dbox_authorization import refresh_access_token,get_auth_url
+from bot.helpers.dbox_authorization import refresh_access_token_if_needed, handle_bad_input_error, handle_auth_error
 from bot import state
-from bot.env import update_env_file
 from ..helpers.display import progress
 from ..helpers.create_shared_link import create_shared_link
 
 logger = LOGGER(__name__)
 
 link = ""
-
-def set_waiting_for_code(value: bool):
-    # Somewhere in servers.py, when you need to set waiting_for_code to True
-    state.waiting_for_code = True
-    return state.waiting_for_code
-
 
 def upload_dbox(dbx, path, overwrite=False):
     """Upload a file to Dropbox.
@@ -77,8 +70,8 @@ def upload_dbox(dbx, path, overwrite=False):
     return shared_link_url
 
 
-async def upload_large_file(dbx, file_path, dropbox_path, message):
-    upload_id = f"{message.message.chat.id}{message.message.id}"
+async def upload_large_file(dbx, file_path, dropbox_path, message, upload_message):
+    upload_id = f"{message.chat.id}{message.id}"
 
     with open(file_path, "rb") as f:
         file_size = os.path.getsize(file_path)
@@ -89,7 +82,7 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
             upload_session_start_result = dbx.files_upload_session_start(f.read(chunk_size))
             cursor = UploadSessionCursor(session_id=upload_session_start_result.session_id, offset=f.tell())
             commit = CommitInfo(path=dropbox_path)
-            await progress(uploaded_bytes, file_size, message.message)
+            await progress(uploaded_bytes, file_size, message, user_message=upload_message, operation="upload", )
 
             while f.tell() < file_size:
                  # Check if the upload has been cancelled
@@ -100,14 +93,14 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
                     print("Finishing upload...")
                     dbx.files_upload_session_finish(f.read(chunk_size), cursor, commit)
                     uploaded_bytes += chunk_size
-                    await progress(uploaded_bytes, file_size, message.message)
+                    await progress(uploaded_bytes, file_size, message, user_message=upload_message, operation="upload")
 
                 else:
                     print("Uploading chunk...")
                     dbx.files_upload_session_append_v2(f.read(chunk_size), cursor)
                     cursor.offset = f.tell()
                     uploaded_bytes += chunk_size
-                    await progress(uploaded_bytes, file_size, message.message)
+                    await progress(uploaded_bytes, file_size, message, user_message=upload_message, operation="upload")
 
 
             # Create or retrieve a shared link
@@ -132,39 +125,70 @@ async def upload_large_file(dbx, file_path, dropbox_path, message):
 
 FILE_SIZE_THRESHOLD = 1 * 1024 * 1024  # 150 MB
 
-async def attempt_upload(dbx, file_path, dropbox_path, message, file_size_bytes, file_name):
-    if file_size_bytes > FILE_SIZE_THRESHOLD:
-        print("Using chunked upload for large file.")
-        response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message)
-    else:
-        print("Using regular upload.")
-        response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
-    return response
+def is_file_uploaded(dbx, dropbox_path):
+    try:
+        dbx.files_get_metadata(dropbox_path)
+        return True
+    except dropbox.exceptions.ApiError as e:
+        if e.error.is_path() and e.error.get_path().is_not_found():
+            return False
+        else:
+            raise e
 
-async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data: str):
+async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size_bytes, file_name,message):
+    try:
+        # Try to get metadata for the file
+        metadata= dbx.files_get_metadata(dropbox_path)
+        logger.info(f"Metadata: {metadata}")
+        return "File already uploaded."
+    except dropbox.exceptions.ApiError as e:
+        # If the file doesn't exist, an ApiError will be thrown
+        if e.error.is_path() and \
+                e.error.get_path().is_not_found():
+            if file_size_bytes > FILE_SIZE_THRESHOLD:
+                print("Using chunked upload for large file.")
+                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message, upload_message=upload_message)
+            else:
+                print("Using regular upload.")
+                response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
+            return response
+        else:
+            raise e
+
+async def upload_handler(client: CloudBot, message: Message):
     global link
     dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or "Your_Default_Access_Token")
+    dbx = await refresh_access_token_if_needed(dbx, message, client)
 
     # Determine the file type and size
-    if message.message.reply_to_message.video:
-        file_name = message.message.reply_to_message.video.file_name
-        file_size_bytes = message.message.reply_to_message.video.file_size
-    elif message.message.reply_to_message.document:
-        file_name = message.message.reply_to_message.document.file_name
-        file_size_bytes = message.message.reply_to_message.document.file_size
-    elif message.message.reply_to_message.audio:
-        file_name = message.message.reply_to_message.audio.file_name
-        file_size_bytes = message.message.reply_to_message.audio.file_size
+    if message.video:
+        file_name = message.video.file_name
+        file_size_bytes = message.video.file_size
+    elif message.document:
+        file_name = message.document.file_name
+        file_size_bytes = message.document.file_size
+    elif message.audio:
+        file_name = message.audio.file_name
+        file_size_bytes = message.audio.file_size
     else:
         await client.send_message(
-            chat_id=message.message.chat.id,
+            chat_id=message.chat.id,
             text="Unsupported file type.",
-            reply_to_message_id=message.message.reply_to_message.id
+            reply_to_message_id=message.id
         )
         return
 
     file_size = size(file_size_bytes)  # Convert bytes to a readable format
 
+    if is_file_uploaded(dbx, f"/{file_name}"):
+        await client.send_message(
+            chat_id=message.chat.id,
+            text="File already uploaded.",
+            reply_to_message_id=message.id
+        )
+        return
+
+    download_successful = False
     try:
         file_path, download_successful = await download_media(client, message)
         if not download_successful:
@@ -174,94 +198,45 @@ async def upload_handler(client: CloudBot, message: CallbackQuery, callback_data
         logger.error(f"{e}")
         await client.edit_message_text(
             chat_id=message.from_user.id,
-            message_id=message.message.id,
+            message_id=message.id,
             text=f"**File downloading error:** `{e}`",
         )
         return
-    try:
-        await client.edit_message_text(
-            chat_id=message.message.chat.id,
-            text="Started uploading...",
-            message_id=message.message.id
-            # reply_markup=completedKeyboard(dl)
-        )
-
-        if callback_data.startswith('dropbox'):
-            print("Filepath: ", file_path)
-            # Check if the file size exceeds the threshold
-            # Initial upload attempt
-            link = await attempt_upload(dbx, file_path, f"/{file_name}", message, file_size_bytes, file_name)
-            if link == "Cancelled":
-                return
-
-        await client.send_message(
-            chat_id=message.message.chat.id,
-            text=(f"✅ **Upload Successful**\n\n"
-                  f"File Name: `{file_name}`"
-                  f"\nFile Size: `{file_size}`"
-                  f'\nURL: `{link}`'),
-            reply_to_message_id=message.message.reply_to_message.id
-        )
-        await client.delete_messages(
-            chat_id=message.message.chat.id,
-            message_ids=message.message.id
-        )
-    except dropbox.exceptions.AuthError as e:
-        # Assuming AuthError is raised on token expiration
+    if download_successful:
         try:
-            print("Refreshing token...")
-            print("Error: ", e)
-            DROPBOX_REFRESH_TOKEN = os.getenv('DROPBOX_REFRESH_TOKEN')
-            new_access_token, _ = refresh_access_token(DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, DROPBOX_APP_SECRET)
-            dbx = dropbox.Dropbox(new_access_token)
-            update_env_file('DROPBOX_ACCESS_TOKEN', new_access_token)
+            upload_message = await client.send_message(
+                chat_id=message.chat.id,
+                text="Started uploading...",
+                reply_to_message_id=message.id
+            )
+
+            print("Filepath: ", file_path)
             # Initial upload attempt
-            link = await attempt_upload(dbx, file_path, f"/{file_name}", message, file_size_bytes, file_name)
+            link = await attempt_upload(dbx, file_path, f"/{file_name}", upload_message, file_size_bytes, file_name, message)
             if link == "Cancelled":
                 return
 
-            # Retry the upload or other operation
-        except Exception as refresh_error:
-            # Handle refresh token expiration or failure
-            logger.error(f"Refresh Token Error: {refresh_error}")
-            auth_url = "https://www.dropbox.com/oauth2/authorize?client_id={}&response_type=code".format(DROPBOX_APP_KEY)
-            set_waiting_for_code(True)
             await client.send_message(
-                chat_id=message.message.chat.id,
-                text="Refresh Token expired too.\n After authorizing, please paste the authorization code you receive here.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Authorize", url=auth_url)]
-                ])
+                chat_id=message.chat.id,
+                text=(f"✅ **Upload Successful**\n\n"
+                    f"File Name: `{file_name}`"
+                    f"\nFile Size: `{file_size}`"
+                    f'\nURL: `{link}`'),
+                reply_to_message_id=message.id
+            )
+            await upload_message.delete()
+        except AuthError as e:
+            await handle_auth_error(message, client)
+        except BadInputError as e:
+            await handle_bad_input_error(message, client)
+        except Exception as e:
+            logger.error(f'Normal error:{e} ')
+            await client.send_message(
+                chat_id=message.from_user.id,
+                reply_to_message_id=message.id,
+                text=f"**File upload failed:** `{e}`",
             )
             return
-    except dropbox.exceptions.BadInputError as e:
-        logger.error(f"BBBBBAAAADDDD, {e}")
-        try:
-            print("Refreshing token...")
-            auth_url = get_auth_url()
-            set_waiting_for_code(True)
-            await client.send_message(
-                chat_id=message.message.chat.id,
-                text="Session expired. Please reauthorize the bot. After authorizing, please paste the authorization code you receive here.",
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Authorize", url=auth_url)]
-                ])
-            )
-        except Exception as auth_error:
-            logger.error(f"{auth_error}")
-            await client.send_message(
-                chat_id=message.message.chat.id,
-                text="Failed to reauthorize the bot. Please try again later."
-            )
-        return
-    except Exception as e:
-        logger.error(f'Normal error:{e} ')
-        await client.edit_message_text(
-            chat_id=message.from_user.id,
-            message_id=message.message.id,
-            text=f"**File upload failed:** `{e}`",
-        )
-        return
 
 async def file_io(response):
     return response['link']

@@ -10,6 +10,7 @@ async def handle_cancel(client: CloudBot, query: CallbackQuery):
     # Set the cancellation flag
     state.upload_controller[upload_id] = True
     state.download_controller[upload_id] = True
+    state.download_status[upload_id] = "cancelled"
 
     await query.message.edit_text("Upload cancelled.")
     await query.answer("Cancelled", show_alert=False)
