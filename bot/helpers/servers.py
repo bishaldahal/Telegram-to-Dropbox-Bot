@@ -123,7 +123,7 @@ async def upload_large_file(dbx, file_path, dropbox_path, message, upload_messag
             if upload_id in state.upload_controller:
                 del state.upload_controller[upload_id]
 
-FILE_SIZE_THRESHOLD = 1 * 1024 * 1024  # 150 MB
+FILE_SIZE_THRESHOLD = 1
 
 def is_file_uploaded(dbx, dropbox_path):
     try:
@@ -135,8 +135,9 @@ def is_file_uploaded(dbx, dropbox_path):
         else:
             raise e
 
-async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size_bytes, file_name,message):
+async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size_bytes, file_name, message):
     try:
+        logger.info(f"File path: {file_path}, Dropbox path: {dropbox_path}, File size: {file_size_bytes}, File name: {file_name}")
         # Try to get metadata for the file
         metadata= dbx.files_get_metadata(dropbox_path)
         logger.info(f"Metadata: {metadata}")
@@ -147,7 +148,7 @@ async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size
                 e.error.get_path().is_not_found():
             if file_size_bytes > FILE_SIZE_THRESHOLD:
                 print("Using chunked upload for large file.")
-                response = await upload_large_file(dbx=dbx, file_path=file_path, dropbox_path=f"/{file_name}", message=message, upload_message=upload_message)
+                response = await upload_large_file(dbx, file_path, dropbox_path, message, upload_message)
             else:
                 print("Using regular upload.")
                 response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
@@ -162,12 +163,21 @@ async def upload_handler(client: CloudBot, message: Message):
 
     # Determine the file type and size
     if message.video:
+        file_location = "Videos"
         file_name = message.video.file_name
         file_size_bytes = message.video.file_size
     elif message.document:
+        file_location = "Files"
         file_name = message.document.file_name
         file_size_bytes = message.document.file_size
+        #if file_name ends with video extension, then it is a video file
+        if file_name and file_name.endswith(('.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.3gp', '.webm')):
+            file_location = "Videos"
+        #if file_name ends with audio extension, then it is an audio file
+        elif file_name and file_name.endswith(('.mp3', '.m4a', '.flac', '.wav', '.wma', '.aac', '.ogg', '.oga', '.opus')):
+            file_location = "Audios"
     elif message.audio:
+        file_location = "Audios"
         file_name = message.audio.file_name
         file_size_bytes = message.audio.file_size
     else:
@@ -179,8 +189,9 @@ async def upload_handler(client: CloudBot, message: Message):
         return
 
     file_size = size(file_size_bytes)  # Convert bytes to a readable format
+    dropbox_path = f"/{file_location}/{file_name}"
 
-    if is_file_uploaded(dbx, f"/{file_name}"):
+    if is_file_uploaded(dbx, dropbox_path):
         await client.send_message(
             chat_id=message.chat.id,
             text="File already uploaded.",
@@ -212,7 +223,7 @@ async def upload_handler(client: CloudBot, message: Message):
 
             print("Filepath: ", file_path)
             # Initial upload attempt
-            link = await attempt_upload(dbx, file_path, f"/{file_name}", upload_message, file_size_bytes, file_name, message)
+            link = await attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size_bytes, file_name, message)
             if link == "Cancelled":
                 return
 
