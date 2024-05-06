@@ -22,6 +22,7 @@ class CloudBot(Client):
                 "root": "bot/plugins"
             },
             workers=6,
+            max_concurrent_transmissions=3
         )
         self.counter = 0
         self.DOWNLOAD_WORKERS = 4
