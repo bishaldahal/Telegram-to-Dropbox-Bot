@@ -18,7 +18,7 @@ logger = LOGGER(__name__)
 
 link = ""
 
-def upload_dbox(dbx, path, overwrite=False):
+def upload_dbox(dbx, path, dropbox_path, overwrite=False):
     """Upload a file to Dropbox.
 
     :param dbx: Dropbox instance.
@@ -26,17 +26,7 @@ def upload_dbox(dbx, path, overwrite=False):
     :return: Dropbox file upload response or None in case of error.
     """
 
-    # Calculate the relative path 
-    relative_path = os.path.relpath(path)
-    # Replace backslashes with forward slashes for Dropbox compatibility
-    dropbox_path = "/" + relative_path.replace("\\", "/")
-
-    # Ensure the Dropbox path does not start with '/../'
-    if dropbox_path.startswith("/../"):
-        dropbox_path = dropbox_path[3:]
-
     print("Dropbox Path: ", dropbox_path)
-    print("Relative Path: ", relative_path)
     print("Path: ", path)
     
     # Checking file existence and mode (overwrite or add)
@@ -123,7 +113,7 @@ async def upload_large_file(dbx, file_path, dropbox_path, message, upload_messag
             if upload_id in state.upload_controller:
                 del state.upload_controller[upload_id]
 
-FILE_SIZE_THRESHOLD = 1
+FILE_SIZE_THRESHOLD = 4 * 1024 * 1024  # 4 MB
 
 def is_file_uploaded(dbx, dropbox_path):
     try:
@@ -151,7 +141,7 @@ async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size
                 response = await upload_large_file(dbx, file_path, dropbox_path, message, upload_message)
             else:
                 print("Using regular upload.")
-                response = upload_dbox(dbx=dbx, path=file_path, overwrite=False)
+                response = upload_dbox(dbx=dbx, path=file_path, dropbox_path=dropbox_path, overwrite=False)
             return response
         else:
             raise e
