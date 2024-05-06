@@ -33,11 +33,11 @@ async def progress(current, total, message: Message = None, user_message: Messag
     time_diff = max(time.perf_counter() - start_time, 0.01)
     percent = round(current * 100 / total, 2)
     progress_str = progressBar(percent)
-    speed = float(current) / time_diff
+    speed = float(current) / time_diff/1024
     eta = timedelta(seconds=int((total - current) / speed)) if speed > 0 else "Unknown"
     elapsed = timedelta(seconds=int(time_diff))
 
-    print("Progress : ", progress_str, percent, human_readable_size(current), human_readable_size(total), human_readable_size(speed), eta, elapsed,"Time_diff: ", time_diff)
+    logger.info("Progress : ", progress_str, percent, human_readable_size(current), human_readable_size(total), human_readable_size(speed), eta, elapsed,"Time_diff: ", time_diff,speed)
 
     progress_details = (
         f"{operation_title}...\n"
