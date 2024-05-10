@@ -1,7 +1,7 @@
 from bot import LOGGER
 from ..filetocloud import DropboxBot
 from ..helpers import download_media
-from pyrogram.types import Message
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from hurry.filesize import size
 import dropbox 
 from dropbox.exceptions import ApiError, AuthError, BadInputError
@@ -233,7 +233,10 @@ async def upload_handler(client: DropboxBot, message: Message):
                     f"File Name: `{file_name}`"
                     f"\nFile Size: `{file_size}`"
                     f'\nURL: `{link}`'),
-                reply_to_message_id=message.id
+                reply_to_message_id=message.id,
+                reply_markup=InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Open Link", url=link)]]
+                )
             )
             await upload_message.delete()
         except AuthError as e:
