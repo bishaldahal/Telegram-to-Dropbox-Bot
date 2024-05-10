@@ -1,5 +1,5 @@
 from bot import LOGGER
-from ..filetocloud import CloudBot
+from ..filetocloud import DropboxBot
 from ..helpers import download_media
 from pyrogram.types import Message
 from hurry.filesize import size
@@ -146,7 +146,7 @@ async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size
         else:
             raise e
 
-async def upload_handler(client: CloudBot, message: Message):
+async def upload_handler(client: DropboxBot, message: Message):
     global link
     dbx = dropbox.Dropbox(os.getenv('DROPBOX_ACCESS_TOKEN') or "Your_Default_Access_Token")
     dbx = await refresh_access_token_if_needed(dbx, message, client)

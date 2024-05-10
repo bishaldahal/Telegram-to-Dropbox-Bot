@@ -1,12 +1,12 @@
 import os
 import shutil
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 
 DOWNLOADS_FOLDER_PATH = 'bot/downloads'
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-@CloudBot.on_message(filters.command("clear_downloads") & filters.private & filters.user(AUTHORIZED_USERS))
+@DropboxBot.on_message(filters.command("clear_downloads") & filters.private & filters.user(AUTHORIZED_USERS))
 async def clear_downloads_command(client, message):
     try:
         # Check if the downloads folder exists

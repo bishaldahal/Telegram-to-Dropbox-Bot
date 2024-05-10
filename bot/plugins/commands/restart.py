@@ -1,11 +1,11 @@
 import sys
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 import os
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-@CloudBot.on_message(filters.command("restart") & filters.private & filters.user(AUTHORIZED_USERS))
+@DropboxBot.on_message(filters.command("restart") & filters.private & filters.user(AUTHORIZED_USERS))
 async def ask_restart(client, message):
     restart_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("Confirm Restart", callback_data="confirm_restart"),
@@ -18,7 +18,7 @@ async def ask_restart(client, message):
         reply_to_message_id=message.id,
     )
 
-@CloudBot.on_callback_query(filters.regex("^confirm_restart$"))
+@DropboxBot.on_callback_query(filters.regex("^confirm_restart$"))
 async def restart(client, callback_query):
     await client.answer_callback_query(callback_query.id, "Restarting the bot...")
     # Delete the original message
@@ -29,7 +29,7 @@ async def restart(client, callback_query):
     # Restart the bot by exiting the process
     sys.exit(42)
 
-@CloudBot.on_callback_query(filters.regex("^cancel_restart$"))
+@DropboxBot.on_callback_query(filters.regex("^cancel_restart$"))
 async def cancel_restart(client, callback_query):
     await client.answer_callback_query(callback_query.id, "Restart cancelled.")
     # Delete the original message

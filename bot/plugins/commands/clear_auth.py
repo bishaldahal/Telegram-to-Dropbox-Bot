@@ -1,4 +1,4 @@
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from bot import CLEAR_AUTH
 from bot.env import clear_auth
@@ -6,7 +6,7 @@ import os
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-@CloudBot.on_message(filters.command("clear_auth") & filters.private & filters.user(AUTHORIZED_USERS))
+@DropboxBot.on_message(filters.command("clear_auth") & filters.private & filters.user(AUTHORIZED_USERS))
 async def clear_auth_command(client, message):
     confirm_markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("Confirm", callback_data="confirm_clear_auth"),
@@ -22,7 +22,7 @@ async def clear_auth_command(client, message):
         reply_to_message_id=message.id,
     )
 
-@CloudBot.on_callback_query(filters.regex("^confirm_clear_auth$"))
+@DropboxBot.on_callback_query(filters.regex("^confirm_clear_auth$"))
 async def confirm_clear_auth(client, callback_query):
     if clear_auth():
         response_text = CLEAR_AUTH
@@ -37,7 +37,7 @@ async def confirm_clear_auth(client, callback_query):
         message_ids=[callback_query.message.id, message_to_delete]
     )
 
-@CloudBot.on_callback_query(filters.regex("^cancel_clear_auth$"))
+@DropboxBot.on_callback_query(filters.regex("^cancel_clear_auth$"))
 async def cancel_clear_auth(client, callback_query):
     # Inform the user that the operation was cancelled
     await client.answer_callback_query(callback_query.id, "Clear authentication cancelled.")

@@ -1,4 +1,4 @@
-from ...filetocloud import CloudBot, filters
+from ...filetocloud import DropboxBot, filters
 from bot import LOGGER
 from ...helpers import upload_handler
 import os
@@ -12,20 +12,20 @@ AUDIO = filters.audio & filters.user(AUTHORIZED_USERS)
 logger = LOGGER(__name__)
 
 
-@CloudBot.on_message(VIDEO)
+@DropboxBot.on_message(VIDEO)
 async def user_video(client, bot):
     logger.info(f"{bot.chat.id} - {bot.video.file_name}")
     await upload_handler(client, bot)
 
 
-@CloudBot.on_message(DOCUMENT)
+@DropboxBot.on_message(DOCUMENT)
 async def user_document(client, bot):
     logger.info(f"{bot.chat.id} - {bot.document.file_name}")
     await upload_handler(client, bot)
 
 
 
-@CloudBot.on_message(AUDIO)
+@DropboxBot.on_message(AUDIO)
 async def user_audio(client, bot):
     logger.info(f"{bot.chat.id} - {bot.audio.file_name}")
     await upload_handler(client, bot)

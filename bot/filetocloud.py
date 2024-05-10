@@ -8,7 +8,7 @@ from bot import (
     LOGGER
 )
 
-class CloudBot(Client):
+class DropboxBot(Client):
     def __init__(self):
         name = self.__class__.__name__.lower()
         self.logger = LOGGER(__name__)

@@ -1,8 +1,8 @@
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 from bot import HELP
 
 
-@CloudBot.on_message(filters.command(["help", "h"]))
+@DropboxBot.on_message(filters.command(["help", "h"]))
 async def help_message(client, message):
     print(message)
     await client.send_message(

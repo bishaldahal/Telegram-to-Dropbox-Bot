@@ -1,10 +1,10 @@
 
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 from pyrogram.types import CallbackQuery
 from bot import state
 
-@CloudBot.on_callback_query(filters.regex(r'^cncl'))
-async def handle_cancel(client: CloudBot, query: CallbackQuery):
+@DropboxBot.on_callback_query(filters.regex(r'^cncl'))
+async def handle_cancel(client: DropboxBot, query: CallbackQuery):
     _, upload_id = query.data.split('+')
     print("Cancel!", upload_id)
     # Set the cancellation flag

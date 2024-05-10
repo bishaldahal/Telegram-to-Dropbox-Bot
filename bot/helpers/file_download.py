@@ -1,11 +1,11 @@
 from pyrogram.types import Message
 from bot import LOGGER, state
-from ..filetocloud import CloudBot
+from ..filetocloud import DropboxBot
 from .display import progress
 
 logger = LOGGER(__name__)
 
-async def download_media(client: CloudBot, message: Message) -> str:
+async def download_media(client: DropboxBot, message: Message) -> str:
     download_id = f"{message.chat.id}{message.id}"
     state.download_controller[download_id] = False  # Initialize cancellation flag
 

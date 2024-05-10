@@ -2,10 +2,10 @@ import psutil
 from pyrogram import Client, filters
 import time
 import datetime
-from bot.filetocloud import CloudBot
+from bot.filetocloud import DropboxBot
 from bot import state
 
-@CloudBot.on_message(filters.command("stats"))
+@DropboxBot.on_message(filters.command("stats"))
 async def send_stats(client, message):
     # Calculate uptime
     uptime_seconds = time.time() - state.bot_start_time

@@ -1,11 +1,11 @@
-from bot.filetocloud import CloudBot, filters
+from bot.filetocloud import DropboxBot, filters
 import subprocess
 import shlex
 import os
 
 AUTHORIZED_USERS = [int(user_id) for user_id in os.environ.get("AUTHORIZED_USERS", "").split()]
 
-@CloudBot.on_message(filters.command("exec") & filters.private & filters.user(AUTHORIZED_USERS))
+@DropboxBot.on_message(filters.command("exec") & filters.private & filters.user(AUTHORIZED_USERS))
 async def execute_command(client, message):
 
     # Extracting the command from the message
