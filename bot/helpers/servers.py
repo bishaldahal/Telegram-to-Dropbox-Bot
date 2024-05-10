@@ -134,7 +134,7 @@ async def attempt_upload(dbx, file_path, dropbox_path, upload_message, file_size
         # Try to get metadata for the file
         metadata= dbx.files_get_metadata(dropbox_path)
         logger.info(f"Metadata: {metadata}")
-        return "File already uploaded."
+        raise Exception("File already uploaded.")
     except dropbox.exceptions.ApiError as e:
         # If the file doesn't exist, an ApiError will be thrown
         if e.error.is_path() and \
@@ -193,19 +193,26 @@ async def upload_handler(client: DropboxBot, message: Message):
         return
 
     download_successful = False
-    try:
-        file_path, download_successful = await download_media(client, message)
-        if not download_successful:
-            logger.info("Download was cancelled. Skipping upload.")
+    file_path = os.path.join('bot/downloads', file_name)
+    if os.path.exists(file_path):
+        local_file_size = os.path.getsize(file_path)
+        if local_file_size == file_size_bytes:
+            download_successful = True
+
+    if not download_successful:
+        try:
+            file_path, download_successful = await download_media(client, message)
+            if not download_successful:
+                logger.info("Download was cancelled. Skipping upload.")
+                return
+        except Exception as e:
+            logger.error(f"{e}")
+            await client.edit_message_text(
+                chat_id=message.from_user.id,
+                message_id=message.id,
+                text=f"**File downloading error:** `{e}`",
+            )
             return
-    except Exception as e:
-        logger.error(f"{e}")
-        await client.edit_message_text(
-            chat_id=message.from_user.id,
-            message_id=message.id,
-            text=f"**File downloading error:** `{e}`",
-        )
-        return
     if download_successful:
         try:
             upload_message = await client.send_message(
