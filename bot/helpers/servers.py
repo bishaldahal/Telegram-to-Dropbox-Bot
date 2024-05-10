@@ -239,6 +239,3 @@ async def upload_handler(client: DropboxBot, message: Message):
             )
             return
 
-async def file_io(response):
-    return response['link']
-
