@@ -62,6 +62,7 @@ def upload_dbox(dbx, path, dropbox_path, overwrite=False):
 
 async def upload_large_file(dbx, file_path, dropbox_path, message, upload_message):
     upload_id = f"{message.chat.id}{message.id}"
+    state.set_start_time(upload_id, time.perf_counter())
 
     with open(file_path, "rb") as f:
         file_size = os.path.getsize(file_path)
@@ -112,6 +113,8 @@ async def upload_large_file(dbx, file_path, dropbox_path, message, upload_messag
             # Clean up the cancellation flag
             if upload_id in state.upload_controller:
                 del state.upload_controller[upload_id]
+            if upload_id in state.start_times:
+                del state.start_times[upload_id]
 
 FILE_SIZE_THRESHOLD = 4 * 1024 * 1024  # 4 MB
 

@@ -1,3 +1,4 @@
+import time
 from pyrogram.types import Message
 from bot import LOGGER, state
 from ..filetocloud import DropboxBot
@@ -16,6 +17,7 @@ async def download_media(client: DropboxBot, message: Message) -> str:
     )
     try:
         await user_message.edit_text("Downloading started...")
+        state.set_start_time(download_id, time.perf_counter())
         download_file_path = await client.download_media(
             message,
             progress=progress,
@@ -37,3 +39,5 @@ async def download_media(client: DropboxBot, message: Message) -> str:
             del state.download_controller[download_id]
         if download_id in state.download_status:
             del state.download_status[download_id]
+        if download_id in state.start_times:
+            del state.start_times[download_id]

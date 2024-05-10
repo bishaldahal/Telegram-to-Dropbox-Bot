@@ -12,7 +12,7 @@ async def progress(current, total, message: Message = None, user_message: Messag
     completion_message = "Upload completed" if operation == "upload" else "Download completed"
 
     download_id = f"{message.chat.id}{message.id}"
-    print("Progress Download ID++++++++++++++++++++:", download_id)
+    # print("Progress Download ID++++++++++++++++++++:", download_id)
     start_time = state.get_start_time(download_id, default=time.perf_counter())
     if state.download_status.get(download_id) == "cancelled":
         state.remove_start_time(download_id)
@@ -33,7 +33,7 @@ async def progress(current, total, message: Message = None, user_message: Messag
     time_diff = max(time.perf_counter() - start_time, 0.01)
     percent = round(current * 100 / total, 2)
     progress_str = progressBar(percent)
-    speed = float(current) / time_diff/1024
+    speed = float(current) / time_diff
     eta = timedelta(seconds=int((total - current) / speed)) if speed > 0 else "Unknown"
     elapsed = timedelta(seconds=int(time_diff))
 
